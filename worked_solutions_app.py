@@ -1,7 +1,7 @@
 """
-NCEA Worked Solutions Explainer (v3)
+NCEA Worked Solutions Explainer (v4)
 - Image OR text input
-- Toggle: Full explanation (learning) vs Quick check (just the answer)
+- 3 modes: Full explanation / Quick check / Check my working
 
 Run with: streamlit run worked_solutions_app.py
 """
@@ -26,7 +26,7 @@ st.set_page_config(
 st.title("🧮 NCEA Worked Solutions Explainer")
 st.markdown(
     "Stuck on a Physics or Maths problem? **Snap a photo or paste the problem below** — "
-    "get a worked solution **explained like a tutor would**, or a quick answer check."
+    "get a worked solution, a quick answer check, or feedback on your own working."
 )
 
 with st.expander("ℹ️  How to use this tool"):
@@ -38,9 +38,8 @@ with st.expander("ℹ️  How to use this tool"):
 3. **Pick a mode:**
    - **Full explanation** — step-by-step reasoning to learn from
    - **Quick check** — just the answer + method, for verifying work you've already done
+   - **Check my working** — paste your own attempt, get specific feedback on where you went right or wrong
 4. Click **Get Worked Solution**.
-
-**Tip:** photos work best when the problem is clearly visible — good lighting, not too small.
 """
     )
 
@@ -80,18 +79,31 @@ context = st.text_area(
     placeholder="e.g. NCEA Level 2 Physics, mechanics topic",
 )
 
-# Mode toggle
+# Mode toggle (now 3 options)
 mode = st.radio(
     "Mode",
-    options=["Full explanation (learning)", "Quick check (just the answer)"],
+    options=["Full explanation (learning)", "Quick check (just the answer)", "Check my working"],
     horizontal=True,
 )
 is_quick = mode.startswith("Quick")
+is_check = mode.startswith("Check")
+
+# Show working input only in Check my working mode
+student_working = ""
+if is_check:
+    st.subheader("Your working / attempt")
+    student_working = st.text_area(
+        "Type out your attempt step by step",
+        height=200,
+        placeholder="Step 1: I started by...\nStep 2: Then I calculated...\nMy final answer was...",
+    )
 
 # --- Generate solution ---
 if st.button("Get Worked Solution", type="primary", use_container_width=True):
     if not problem_image and not problem_text.strip():
         st.warning("Please upload a photo of the problem OR paste it as text.")
+    elif is_check and not student_working.strip():
+        st.warning("Please paste your working/attempt so I can check it.")
     else:
         context_section = f"\nSTUDENT CONTEXT:\n{context}\n" if context.strip() else ""
 
@@ -100,7 +112,50 @@ if st.button("Get Worked Solution", type="primary", use_container_width=True):
         else:
             problem_section = f"PROBLEM:\n{problem_text}"
 
-        if is_quick:
+        if is_check:
+            prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
+
+A student has attempted a problem and wants you to CHECK THEIR WORKING — identify where they went right, where they went wrong, and explain what to fix.
+
+INSTRUCTIONS:
+1. First, internally solve the problem yourself to know the correct answer and approach.
+2. Then carefully read the student's working.
+3. Identify the FIRST point where their working diverges from correct (don't list every error — focus on the root cause).
+4. Show what's right, where things went wrong, and how to fix it.
+
+Your response must have EXACTLY these four sections, in this order:
+
+## ✅ What you got right
+- Specific correct steps from your working. Quote phrases where helpful.
+- If genuinely nothing was right, say so constructively.
+
+## ⚠️ Where you went wrong
+- The FIRST step where things went wrong (everything after may be wrong because of this).
+- Quote your specific line(s).
+- Explain WHY it's wrong (the misconception or mistake).
+
+## 🔧 What to fix
+- Step-by-step what to do from the point of divergence.
+- Be specific, not vague.
+
+## 📘 The correct working (brief)
+- A tight version of the correct working for comparison.
+- Use plain text math notation (sin(x), x^2, sqrt(2), θ, Δ, π — no LaTeX).
+
+GUIDELINES:
+- Be honest. If everything is wrong, say so kindly.
+- Focus on root cause errors, not cascading symptoms.
+- Match NCEA Level 2-3 understanding.
+- Refer to the student as "you".
+
+{problem_section}
+
+STUDENT'S WORKING:
+{student_working}
+{context_section}
+
+Now check the working."""
+        elif is_quick:
             prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
 
 A student needs to QUICKLY CHECK their answer to a problem — they've already done the work, they just want to verify.
@@ -174,7 +229,7 @@ Now walk through the solution."""
         st.markdown(response.text)
 
         st.download_button(
-            label="📥 Download solution as .txt",
+            label="📥 Download as .txt",
             data=response.text,
             file_name="worked_solution.txt",
             mime="text/plain",
