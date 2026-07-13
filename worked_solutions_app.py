@@ -1,8 +1,5 @@
 """
-NCEA Worked Solutions Explainer (v4)
-- Image OR text input
-- 3 modes: Full explanation / Quick check / Check my working
-
+NCEA Worked Solutions Explainer (v5 - cleaned up)
 Run with: streamlit run worked_solutions_app.py
 """
 
@@ -12,225 +9,199 @@ from dotenv import load_dotenv
 import streamlit as st
 from PIL import Image
 
-# --- Config ---
 MODEL_NAME = "gemini-2.5-flash-lite"
 
-# --- Page setup ---
-st.set_page_config(
-    page_title="NCEA Worked Solutions",
-    page_icon="🧮",
-    layout="wide",
-)
+st.set_page_config(page_title="NCEA Worked Solutions", page_icon="🧮", layout="centered")
 
-# --- Title and description ---
-st.title("🧮 NCEA Worked Solutions Explainer")
-st.markdown(
-    "Stuck on a Physics or Maths problem? **Snap a photo or paste the problem below** — "
-    "get a worked solution, a quick answer check, or feedback on your own working."
-)
-
-with st.expander("ℹ️  How to use this tool"):
+st.title("🧮 NCEA Worked Solutions")
+st.caption("Physics & Maths. Get a solution, check an answer, or check your own working.")
+with st.expander("ℹ️ How to use"):
     st.markdown(
         """
-**Steps:**
-1. **Provide your problem** — upload a photo (textbook, notes, whiteboard) OR paste/type the text.
-2. **(Optional) Add context** — your level (NCEA 1/2/3), topic, anything helpful.
-3. **Pick a mode:**
-   - **Full explanation** — step-by-step reasoning to learn from
-   - **Quick check** — just the answer + method, for verifying work you've already done
-   - **Check my working** — paste your own attempt, get specific feedback on where you went right or wrong
-4. Click **Get Worked Solution**.
-"""
-    )
+**Pick a mode:**
+- **📖 Explain it to me** — full step-by-step solution with reasoning. For learning.
+- **⚡ Just the answer** — quick answer + method. For checking work you've done.
+- **✏️ Check my working** — paste or photo your attempt, find out where you went wrong.
 
-# --- API key check ---
+**Tips:**
+- Photos work best in good light, problem clearly visible.
+- In *Check my working*, the problem is optional — skip it if your working speaks for itself.
+        """
+    )
+# --- API key ---
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
-    st.error("No GEMINI_API_KEY found. Set it in your .env file or Streamlit secrets.")
+    st.error("No GEMINI_API_KEY found.")
     st.stop()
 genai.configure(api_key=api_key)
 
-# --- Input area ---
-st.subheader("Your problem")
 
-problem_image = st.file_uploader(
-    "📷 Upload a photo of the problem (jpg, png)",
-    type=["jpg", "jpeg", "png"],
-    key="problem_image",
-)
+def read_image(f):
+    return Image.open(f)
 
-if problem_image:
-    img_preview = Image.open(problem_image)
-    st.image(img_preview, caption="Your uploaded problem", width=400)
 
-problem_text = st.text_area(
-    "✍️  Or paste / type the problem here",
-    height=150,
-    key="problem_text",
-    placeholder="e.g. A 2.0 kg block slides down a frictionless ramp inclined at 30°...",
-)
-
-st.subheader("Context (optional)")
-context = st.text_area(
-    "Your level, topic, or anything else helpful",
-    height=80,
-    label_visibility="collapsed",
-    placeholder="e.g. NCEA Level 2 Physics, mechanics topic",
-)
-
-# Mode toggle (now 3 options)
+# --- Mode first (drives what you see) ---
 mode = st.radio(
-    "Mode",
-    options=["Full explanation (learning)", "Quick check (just the answer)", "Check my working"],
+    "What do you need?",
+    [
+        "📖 Explain it to me",
+        "⚡ Just the answer",
+        "✏️ Check my working",
+    ],
     horizontal=True,
 )
-is_quick = mode.startswith("Quick")
-is_check = mode.startswith("Check")
+is_check = mode.startswith("✏️")
 
-# Show working input only in Check my working mode
+st.divider()
+
+# --- The problem ---
+if is_check:
+    st.subheader("The problem *(optional)*")
+    st.caption("Skip this if your working shows enough on its own.")
+else:
+    st.subheader("The problem")
+
+problem_image = st.file_uploader("📷 Photo of the problem", type=["jpg", "jpeg", "png"], key="prob_img")
+if problem_image:
+    st.image(read_image(problem_image), width=350)
+
+problem_text = st.text_area(
+    "Or type it out",
+    height=120,
+    key="prob_text",
+    placeholder="e.g. A 0.50 kg ball is dropped from 12 m. Find its speed just before it lands.",
+    label_visibility="collapsed" if problem_image else "visible",
+)
+
+# --- Your working (check mode only) ---
 student_working = ""
 if is_check:
-    st.subheader("Your working / attempt")
+    st.subheader("Your working")
+    working_image = st.file_uploader("📷 Photo of your working", type=["jpg", "jpeg", "png"], key="work_img")
+    if working_image:
+        st.image(read_image(working_image), width=350)
+
     student_working = st.text_area(
-        "Type out your attempt step by step",
-        height=200,
-        placeholder="Step 1: I started by...\nStep 2: Then I calculated...\nMy final answer was...",
+        "Or type it out",
+        height=180,
+        key="work_text",
+        placeholder="Step 1: I used v = u + at\nStep 2: ...\nMy answer: ...",
+        label_visibility="collapsed" if working_image else "visible",
+    )
+else:
+    working_image = None
+
+# --- Optional context, tucked away ---
+with st.expander("Add context (optional)"):
+    context = st.text_input(
+        "Your level or topic",
+        placeholder="e.g. NCEA Level 2 Physics, mechanics",
+        label_visibility="collapsed",
     )
 
-# --- Generate solution ---
-if st.button("Get Worked Solution", type="primary", use_container_width=True):
-    if not problem_image and not problem_text.strip():
-        st.warning("Please upload a photo of the problem OR paste it as text.")
-    elif is_check and not student_working.strip():
-        st.warning("Please paste your working/attempt so I can check it.")
+st.divider()
+
+# --- Go ---
+if st.button("Go", type="primary", use_container_width=True):
+    has_problem = bool(problem_image or problem_text.strip())
+    has_working = bool(working_image or student_working.strip())
+
+    if is_check and not has_working:
+        st.warning("Add your working — a photo or typed out.")
+    elif not is_check and not has_problem:
+        st.warning("Add the problem — a photo or typed out.")
     else:
-        context_section = f"\nSTUDENT CONTEXT:\n{context}\n" if context.strip() else ""
-
+        images = []
         if problem_image:
-            problem_section = "The student's problem is shown in the attached image. Read it carefully — if there's a diagram, briefly describe what you see."
-        else:
-            problem_section = f"PROBLEM:\n{problem_text}"
+            images.append(read_image(problem_image))
+        if is_check and working_image:
+            images.append(read_image(working_image))
 
+        ctx = f"\nCONTEXT: {context}\n" if context.strip() else ""
+
+        # Describe what's been given
+        if is_check:
+            parts = []
+            if problem_image:
+                parts.append("The problem is in the first attached image.")
+            elif problem_text.strip():
+                parts.append(f"THE PROBLEM:\n{problem_text}")
+            else:
+                parts.append("No problem statement was given — work out what the problem is from the student's working.")
+
+            if working_image:
+                parts.append("The student's working is in the last attached image.")
+            else:
+                parts.append(f"STUDENT'S WORKING:\n{student_working}")
+            given = "\n\n".join(parts)
+        else:
+            given = "The problem is in the attached image." if problem_image else f"THE PROBLEM:\n{problem_text}"
+
+        # --- Prompts ---
         if is_check:
             prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
 
-A student has attempted a problem and wants you to CHECK THEIR WORKING — identify where they went right, where they went wrong, and explain what to fix.
+A student has attempted a problem. Check their working: what's right, where it first went wrong, and how to fix it.
 
-INSTRUCTIONS:
-1. First, internally solve the problem yourself to know the correct answer and approach.
-2. Then carefully read the student's working.
-3. Identify the FIRST point where their working diverges from correct (don't list every error — focus on the root cause).
-4. Show what's right, where things went wrong, and how to fix it.
+Solve it yourself first, then compare. Focus on the FIRST point where they went wrong — everything after may just be a knock-on effect.
 
-Your response must have EXACTLY these four sections, in this order:
+Use EXACTLY these four sections:
 
 ## ✅ What you got right
-- Specific correct steps from your working. Quote phrases where helpful.
-- If genuinely nothing was right, say so constructively.
-
 ## ⚠️ Where you went wrong
-- The FIRST step where things went wrong (everything after may be wrong because of this).
-- Quote your specific line(s).
-- Explain WHY it's wrong (the misconception or mistake).
-
+(Quote their line. Explain WHY it's wrong.)
 ## 🔧 What to fix
-- Step-by-step what to do from the point of divergence.
-- Be specific, not vague.
+## 📘 The correct working
 
-## 📘 The correct working (brief)
-- A tight version of the correct working for comparison.
-- Use plain text math notation (sin(x), x^2, sqrt(2), θ, Δ, π — no LaTeX).
+FORMATTING: plain text maths only. No LaTeX. Use Unicode (² ³ √ × ÷ θ Δ π ≈ ±).
+Refer to the student as "you". Be honest but not harsh.
 
-GUIDELINES:
-- Be honest. If everything is wrong, say so kindly.
-- Focus on root cause errors, not cascading symptoms.
-- Match NCEA Level 2-3 understanding.
-- Refer to the student as "you".
-
-{problem_section}
-
-STUDENT'S WORKING:
-{student_working}
-{context_section}
-
-Now check the working."""
-        elif is_quick:
+{given}
+{ctx}"""
+        elif mode.startswith("⚡"):
             prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
 
-A student needs to QUICKLY CHECK their answer to a problem — they've already done the work, they just want to verify.
-
-Be brief. Use exactly this structure:
+The student just wants to check their answer. Be brief.
 
 ## Final Answer
-- State the answer with correct units and significant figures
-- Make the final number **bold**
-- If the problem has multiple parts (a, b, c...), give each answer
+(Correct units and sig figs. Bold the number. Cover all parts if multi-part.)
 
 ## Method
-- 1-3 sentences only. State the approach used.
-- Show the key equation but NOT the full working.
+(1-3 sentences. Key equation only, no full working.)
 
-That's all. The student is checking work, not learning from scratch.
+FORMATTING: plain text maths only. No LaTeX. Use Unicode (² ³ √ × ÷ θ Δ π ≈ ±).
 
-{problem_section}
-{context_section}
-
-Now provide the quick check."""
+{given}
+{ctx}"""
         else:
             prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
 
-A student will give you a problem. Walk them through the solution step-by-step, the way an excellent tutor would — not just showing the steps, but explaining WHY each step is taken.
+Walk the student through the solution — not just the steps, but WHY each step.
 
-Your response must have EXACTLY these five sections, in this order, using these exact headers:
+Use EXACTLY these five sections:
 
 ## Problem Setup
-- Identify what type of problem this is (kinematics, energy, circuits, calculus, trig, etc.)
-- List the known values and what you need to find
-- Identify the relevant formula(s) or concept(s)
-
+(Type of problem, knowns, what's needed, relevant formula.)
 ## Step-by-Step Solution
-For each step:
-- State what you're doing
-- Show the working clearly. Plain text math is preferred (e.g. "a = g × sin(θ) = 9.8 × 0.5 = 4.9 m/s²"). Use Unicode symbols where helpful (θ Δ π ² ³ √ ° ≈) and plain operators (* for multiply, / for divide, ^ for powers, sqrt() for roots).
-- Explain WHY this step
-
+(Each step: what you're doing, the working, and why.)
 ## Final Answer
-- State the answer with correct units and significant figures
-- Make the final number bold (use markdown ** **)
-
+(Correct units and sig figs. Bold the number.)
 ## Common Pitfalls
-- 1-2 common mistakes students make on this type of problem
-- How to avoid them
-
+(1-2 mistakes students make here.)
 ## Key Takeaway
-- One-sentence summary of the main concept this problem tests
+(One sentence.)
 
-GUIDELINES:
-- Match NCEA Level 2-3 understanding.
-- Be encouraging but not patronising.
-- If the problem has missing info, state what you're assuming.
+FORMATTING: plain text maths only. No LaTeX. Use Unicode (² ³ √ × ÷ θ Δ π ≈ ±).
+Refer to the student as "you".
 
-{problem_section}
-{context_section}
+{given}
+{ctx}"""
 
-Now walk through the solution."""
-
-        with st.spinner("Working through your problem..."):
+        with st.spinner("Working on it..."):
             model = genai.GenerativeModel(MODEL_NAME)
-
-            if problem_image:
-                img = Image.open(problem_image)
-                response = model.generate_content([prompt, img])
-            else:
-                response = model.generate_content(prompt)
+            response = model.generate_content([prompt] + images if images else prompt)
 
         st.divider()
         st.markdown(response.text)
-
-        st.download_button(
-            label="📥 Download as .txt",
-            data=response.text,
-            file_name="worked_solution.txt",
-            mime="text/plain",
-        )
+        st.download_button("📥 Download", data=response.text, file_name="worked_solution.txt", mime="text/plain")
