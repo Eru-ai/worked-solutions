@@ -205,3 +205,6 @@ Refer to the student as "you".
         st.divider()
         st.markdown(response.text)
         st.download_button("📥 Download", data=response.text, file_name="worked_solution.txt", mime="text/plain")
+
+st.divider()
+st.caption("Found a bug or have feedback? Email me: your@email.com")
