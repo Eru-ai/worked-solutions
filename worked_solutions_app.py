@@ -1,5 +1,5 @@
 """
-NCEA Worked Solutions Explainer (v5 - cleaned up)
+NCEA Worked Solutions Explainer (v6 - scaffolded explanations)
 Run with: streamlit run worked_solutions_app.py
 """
 
@@ -183,12 +183,19 @@ Use EXACTLY these five sections:
 
 ## Problem Setup
 (Type of problem, knowns, what's needed, relevant formula.)
+
 ## Step-by-Step Solution
-(Each step: what you're doing, the working, and why.)
+(Number each step. ONE action per step — never combine two actions into one step.
+Keep each step to 1-2 short sentences: what you do, the working, then why.
+A student should be able to follow one line at a time without freezing.
+Use the ACTUAL numbers from THIS problem, not general advice.)
+
 ## Final Answer
 (Correct units and sig figs. Bold the number.)
+
 ## Common Pitfalls
 (1-2 mistakes students make here.)
+
 ## Key Takeaway
 (One sentence.)
 
