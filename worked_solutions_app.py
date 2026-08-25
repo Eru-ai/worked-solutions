@@ -1,5 +1,5 @@
 """
-NCEA Worked Solutions Explainer (v6 - scaffolded explanations)
+NCEA Worked Solutions Explainer (v7 - ESL simpler-English toggle)
 Run with: streamlit run worked_solutions_app.py
 """
 
@@ -26,6 +26,7 @@ with st.expander("ℹ️ How to use"):
 **Tips:**
 - Photos work best in good light, problem clearly visible.
 - In *Check my working*, the problem is optional — skip it if your working speaks for itself.
+- Tick **Explain in simpler English** if English isn't your first language.
         """
     )
 # --- API key ---
@@ -92,6 +93,9 @@ if is_check:
 else:
     working_image = None
 
+# --- Simpler English (ESL) toggle — visible so students who need it can find it ---
+simpler_english = st.checkbox("🌏 Explain in simpler English (for English as a second language)")
+
 # --- Optional context, tucked away ---
 with st.expander("Add context (optional)"):
     context = st.text_input(
@@ -119,6 +123,17 @@ if st.button("Go", type="primary", use_container_width=True):
             images.append(read_image(working_image))
 
         ctx = f"\nCONTEXT: {context}\n" if context.strip() else ""
+
+        # ESL instruction — simplify LANGUAGE, never the physics/maths
+        esl = (
+            "\nLANGUAGE: Write for a student who is still learning English. "
+            "Use very simple English, like you are explaining to someone new to the language. "
+            "Rules: keep sentences short (about 10 words or less). "
+            "Use easy, common words. Avoid idioms, slang, and long words where a short word works. "
+            "Explain every technical term in plain words the first time you use it. "
+            "Keep the physics and maths fully correct — make the WORDS simpler, not the content.\n"
+            if simpler_english else ""
+        )
 
         # Describe what's been given
         if is_check:
@@ -156,7 +171,7 @@ Use EXACTLY these four sections:
 
 FORMATTING: plain text maths only. No LaTeX. Use Unicode (² ³ √ × ÷ θ Δ π ≈ ±).
 Refer to the student as "you". Be honest but not harsh.
-
+{esl}
 {given}
 {ctx}"""
         elif mode.startswith("⚡"):
@@ -171,7 +186,7 @@ The student just wants to check their answer. Be brief.
 (1-3 sentences. Key equation only, no full working.)
 
 FORMATTING: plain text maths only. No LaTeX. Use Unicode (² ³ √ × ÷ θ Δ π ≈ ±).
-
+{esl}
 {given}
 {ctx}"""
         else:
@@ -201,7 +216,7 @@ Use the ACTUAL numbers from THIS problem, not general advice.)
 
 FORMATTING: plain text maths only. No LaTeX. Use Unicode (² ³ √ × ÷ θ Δ π ≈ ±).
 Refer to the student as "you".
-
+{esl}
 {given}
 {ctx}"""
 
