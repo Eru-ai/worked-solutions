@@ -1,5 +1,5 @@
 """
-NCEA Worked Solutions Explainer (v7 - ESL simpler-English toggle)
+NCEA Worked Solutions Explainer (v9 - trust signals, stronger uncertainty flag)
 Run with: streamlit run worked_solutions_app.py
 """
 
@@ -27,6 +27,8 @@ with st.expander("ℹ️ How to use"):
 - Photos work best in good light, problem clearly visible.
 - In *Check my working*, the problem is optional — skip it if your working speaks for itself.
 - Tick **Explain in simpler English** if English isn't your first language.
+
+**Remember:** AI can make mistakes. Always check important answers with your teacher or textbook.
         """
     )
 # --- API key ---
@@ -135,6 +137,18 @@ if st.button("Go", type="primary", use_container_width=True):
             if simpler_english else ""
         )
 
+        # Trust signal — placed FIRST and firm, so a fast model checks it before solving.
+        trust = (
+            "FIRST, BEFORE YOU DO ANYTHING ELSE — CHECK IF THE PROBLEM CAN ACTUALLY BE SOLVED:\n"
+            "- If the problem is missing information needed to solve it (e.g. no numbers, no angle, "
+            "no height/time/distance), OR the photo is blurry/unreadable, OR the question is vague or "
+            "ambiguous, then DO NOT try to solve it or invent numbers.\n"
+            "- Instead, your ENTIRE reply must be a short note starting with '⚠️ Not fully sure:' that "
+            "explains exactly what information is missing or unclear, and what the student needs to add.\n"
+            "- Only if the problem HAS everything needed to solve it, ignore this note and answer normally "
+            "using the sections below.\n\n"
+        )
+
         # Describe what's been given
         if is_check:
             parts = []
@@ -157,7 +171,7 @@ if st.button("Go", type="primary", use_container_width=True):
         if is_check:
             prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
 
-A student has attempted a problem. Check their working: what's right, where it first went wrong, and how to fix it.
+{trust}A student has attempted a problem. Check their working: what's right, where it first went wrong, and how to fix it.
 
 Solve it yourself first, then compare. Focus on the FIRST point where they went wrong — everything after may just be a knock-on effect.
 
@@ -177,7 +191,7 @@ Refer to the student as "you". Be honest but not harsh.
         elif mode.startswith("⚡"):
             prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
 
-The student just wants to check their answer. Be brief.
+{trust}The student just wants to check their answer. Be brief.
 
 ## Final Answer
 (Correct units and sig figs. Bold the number. Cover all parts if multi-part.)
@@ -192,7 +206,7 @@ FORMATTING: plain text maths only. No LaTeX. Use Unicode (² ³ √ × ÷ θ Δ 
         else:
             prompt = f"""You are an experienced NCEA Level 2/3 Physics and Maths tutor in New Zealand.
 
-Walk the student through the solution — not just the steps, but WHY each step.
+{trust}Walk the student through the solution — not just the steps, but WHY each step.
 
 Use EXACTLY these five sections:
 
@@ -226,6 +240,8 @@ Refer to the student as "you".
 
         st.divider()
         st.markdown(response.text)
+        # --- Trust signal: always-on reminder under every answer ---
+        st.caption("⚠️ AI can make mistakes. Check important answers with your teacher or textbook.")
         st.download_button("📥 Download", data=response.text, file_name="worked_solution.txt", mime="text/plain")
 
 st.divider()
