@@ -1,5 +1,5 @@
 """
-NCEA Worked Solutions Explainer (v9 - trust signals, stronger uncertainty flag)
+NCEA Worked Solutions Explainer (v10 - student notes/reference material)
 Run with: streamlit run worked_solutions_app.py
 """
 
@@ -98,11 +98,14 @@ else:
 # --- Simpler English (ESL) toggle — visible so students who need it can find it ---
 simpler_english = st.checkbox("🌏 Explain in simpler English (for English as a second language)")
 
-# --- Optional context, tucked away ---
-with st.expander("Add context (optional)"):
-    context = st.text_input(
-        "Your level or topic",
-        placeholder="e.g. NCEA Level 2 Physics, mechanics",
+# --- Optional: student's own notes / method / formula sheet ---
+with st.expander("📝 Add your notes, method, or formula sheet (optional)"):
+    st.caption("Paste the way your teacher taught it, a formula sheet, or your class notes. "
+               "The tool will follow YOUR method where it can.")
+    notes = st.text_area(
+        "Your notes / method / formulas",
+        height=140,
+        placeholder="e.g. Our teacher uses: v² = u² + 2as, then... \nOr paste your formula sheet here.",
         label_visibility="collapsed",
     )
 
@@ -124,7 +127,20 @@ if st.button("Go", type="primary", use_container_width=True):
         if is_check and working_image:
             images.append(read_image(working_image))
 
-        ctx = f"\nCONTEXT: {context}\n" if context.strip() else ""
+        # If the student pasted their own notes/method, tell the AI to prefer their approach
+        if notes.strip():
+            ctx = (
+                "\nSTUDENT'S OWN NOTES / METHOD (they pasted this):\n"
+                f"{notes}\n\n"
+                "IMPORTANT — HOW TO USE THEIR NOTES:\n"
+                "- Prefer the method, formulas, and notation in the student's notes above your own.\n"
+                "- If their notes give a different valid way to solve it, use THEIR way so it matches class.\n"
+                "- BUT if something in their notes is actually wrong (a wrong formula or error), still give "
+                "the correct answer, and add a short line: 'Heads up: something in your notes looks off — ...' "
+                "explaining what to check.\n"
+            )
+        else:
+            ctx = ""
 
         # ESL instruction — simplify LANGUAGE, never the physics/maths
         esl = (
